@@ -34,7 +34,18 @@ const Main = () => {
 }
 
 function Ground() {
-
+  const [textureError, setTextureError] = useState(false);
+  
+  const textures = useTexture({
+    map: '/assets/sloppy-mortar-stone-wall_albedo.png',
+    normalMap: '/assets/sloppy-mortar-stone-wall_normal.png',
+    roughnessMap: '/assets/sloppy-mortar-stone-wall_roughness.png', // если есть
+    aoMap: '/assets/sloppy-mortar-stone-wall_ao.png', // если есть
+  }, undefined, (err) => {
+    console.error('Error loading textures:', err);
+    setTextureError(true);
+  });
+  
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
@@ -42,7 +53,17 @@ function Ground() {
       receiveShadow
     >
       <planeGeometry args={[500, 500]} />
-      <meshStandardMaterial color="#3a5a2a" roughness={0.8} metalness={0.1} />
+      {!textureError && textures.map ? (
+        <meshStandardMaterial
+          map={textures.map}
+          normalMap={textures.normalMap}
+          roughnessMap={textures.roughnessMap}
+          roughness={0.7}
+          metalness={0.1}
+        />
+      ) : (
+        <meshStandardMaterial color="#4a6a3b" roughness={0.8} metalness={0.1} />
+      )}
     </mesh>
   );
 }

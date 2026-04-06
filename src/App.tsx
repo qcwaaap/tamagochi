@@ -37,10 +37,9 @@ function Ground() {
   const [textureError, setTextureError] = useState(false);
   
   const textures = useTexture({
-    map: '/assets/sloppy-mortar-stone-wall_albedo.png',
-    normalMap: '/assets/sloppy-mortar-stone-wall_normal.png',
-    roughnessMap: '/assets/sloppy-mortar-stone-wall_roughness.png', // если есть
-    aoMap: '/assets/sloppy-mortar-stone-wall_ao.png', // если есть
+    map: 'assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_albedo.png',
+    normalMap: '/assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_normal-ogl.png',
+    aoMap: 'assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_ao.png', // если есть
   }, undefined, (err) => {
     console.error('Error loading textures:', err);
     setTextureError(true);
@@ -57,8 +56,6 @@ function Ground() {
         <meshStandardMaterial
           map={textures.map}
           normalMap={textures.normalMap}
-          roughnessMap={textures.roughnessMap}
-          roughness={0.7}
           metalness={0.1}
         />
       ) : (

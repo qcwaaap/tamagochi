@@ -4,6 +4,7 @@ import { Sky, useGLTF, OrbitControls } from "@react-three/drei";
 import './App.css';
 import { useTexture } from '@react-three/drei';
 
+
 function Scene() {
   const [error, setError] = useState(null);
   

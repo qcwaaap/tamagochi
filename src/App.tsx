@@ -1,12 +1,8 @@
-import React, { Suspense, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Sky, useGLTF, OrbitControls, useTexture } from "@react-three/drei";
 import * as THREE from 'three';
 import './App.css';
-
-// --------------------------------------------------------------
-// ВАШИ СУЩЕСТВУЮЩИЕ КОМПОНЕНТЫ (НЕТРОНУТЫ)
-// --------------------------------------------------------------
 
 function Scene({ fatigue, onInteract }) {
   const [error, setError] = useState(null);
@@ -24,7 +20,7 @@ function Scene({ fatigue, onInteract }) {
 
   useEffect(() => {
     if (scene) {
-      console.log('Model loaded successfully:', scene);
+      console.log('Модель загружена');
       scene.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -32,7 +28,7 @@ function Scene({ fatigue, onInteract }) {
         }
       });
     } else if (loadError) {
-      console.error('Error loading model:', loadError);
+      console.error('Ошибка загрузки модели:', loadError);
       setError(loadError);
     }
   }, [scene, loadError]);
@@ -92,28 +88,66 @@ function Ground() {
     normalMap: '/assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_normal-ogl.png',
     aoMap: '/assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_ao.png',
   }, undefined, (err) => {
-    console.error('Error loading textures:', err);
+    console.error('Ошибка загрузки текстур:', err);
     setTextureError(true);
   });
   
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -1, 0]}
-      receiveShadow
-    >
-      <planeGeometry args={[500, 500]} />
-      {!textureError && textures.map ? (
-        <meshStandardMaterial
-          map={textures.map}
-          normalMap={textures.normalMap}
-          aoMap={textures.aoMap}
-          metalness={0.1}
-        />
-      ) : (
-        <meshStandardMaterial color="#4a6a3b" roughness={0.8} metalness={0.1} />
-      )}
-    </mesh>
+    <group>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -1.2, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[20, 8]} />
+        {!textureError && textures.map ? (
+          <meshStandardMaterial
+            map={textures.map}
+            normalMap={textures.normalMap}
+            aoMap={textures.aoMap}
+            roughness={0.7}
+            metalness={0.1}
+          />
+        ) : (
+          <meshStandardMaterial color="#6b5b4a" roughness={0.7} metalness={0.1} />
+        )}
+      </mesh>
+
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[12, -1.25, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[6, 10]} />
+        <meshStandardMaterial color="#4a6a3b" roughness={0.9} metalness={0.05} />
+      </mesh>
+
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[-12, -1.25, 0]}
+        receiveShadow
+      >
+        <planeGeometry args={[6, 10]} />
+        <meshStandardMaterial color="#4a6a3b" roughness={0.9} metalness={0.05} />
+      </mesh>
+
+      {[...Array(16)].map((_, i) => (
+        <mesh
+          key={i}
+          position={[
+            -10 + Math.random() * 20,
+            -1.15,
+            -3 + Math.random() * 6
+          ]}
+          rotation={[Math.random(), Math.random(), Math.random()]}
+          castShadow
+          receiveShadow
+        >
+          <dodecahedronGeometry args={[0.08 + Math.random() * 0.12, 0]} />
+          <meshStandardMaterial color="#7a6b5a" roughness={0.6} metalness={0.05} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -251,9 +285,6 @@ const ThoughtText = ({ show, onComplete }) => {
   );
 };
 
-// --------------------------------------------------------------
-// ИЗМЕНЁННЫЙ КОМПОНЕНТ КНОПОК (добавлены пропсы для смены погоды)
-// --------------------------------------------------------------
 const ActionButtons = ({ onFeed, onRest, onPlay, buttonsDisabled, onSetWeatherSun, onSetWeatherWind, onSetWeatherRain }) => {
   const [buttonStates, setButtonStates] = useState({ feed: false, rest: false, play: false });
   const [disabledState, setDisabledState] = useState({ feed: false, rest: false, play: false });
@@ -280,7 +311,6 @@ const ActionButtons = ({ onFeed, onRest, onPlay, buttonsDisabled, onSetWeatherSu
       if (action === 'feed') onFeed();
       if (action === 'rest') onRest();
       if (action === 'play') onPlay();
-      // Меняем погоду при нажатии
       if (weatherSetter) weatherSetter();
     }
   };
@@ -307,22 +337,16 @@ const ActionButtons = ({ onFeed, onRest, onPlay, buttonsDisabled, onSetWeatherSu
   );
 };
 
-// --------------------------------------------------------------
-// НОВЫЕ КОМПОНЕНТЫ (ПЛАВНЫЙ ПЕРЕХОД ПОГОДЫ)
-// --------------------------------------------------------------
-
-// Плавное переключение освещения
 function DynamicLighting({ targetWeather }) {
   const sunLightRef = useRef();
   const fillLightRef = useRef();
   const [currentWeather, setCurrentWeather] = useState(targetWeather);
-  const [t, setT] = useState(1); // интерполяция от 0 до 1
+  const [t, setT] = useState(1);
 
-  // При смене targetWeather запускаем плавный переход
   useEffect(() => {
     if (targetWeather !== currentWeather) {
       let startTime = 0;
-      const duration = 3000; // 3 секунды
+      const duration = 3000;
       const startWeather = currentWeather;
       const endWeather = targetWeather;
       const startConfig = getConfig(startWeather);
@@ -351,7 +375,7 @@ function DynamicLighting({ targetWeather }) {
   const getConfig = (weather) => {
     switch (weather) {
       case 'sun': return { mainIntensity: 1.2, mainColor: new THREE.Color('#ffdd99'), fillIntensity: 0.5, fillColor: new THREE.Color('#ffaa66'), ambient: 0.5 };
-      case 'rain': return { mainIntensity: 0.6, mainColor: new THREE.Color('#88aaff'), fillIntensity: 0.3, fillColor: new THREE.Color('#6688cc'), ambient: 0.3 };
+      case 'rain': return { mainIntensity: 0.5, mainColor: new THREE.Color('#6688aa'), fillIntensity: 0.2, fillColor: new THREE.Color('#445588'), ambient: 0.25 };
       case 'wind': return { mainIntensity: 0.9, mainColor: new THREE.Color('#ccddff'), fillIntensity: 0.4, fillColor: new THREE.Color('#99aaff'), ambient: 0.4 };
       default: return { mainIntensity: 1, mainColor: new THREE.Color('#ffffff'), fillIntensity: 0.4, fillColor: new THREE.Color('#cccccc'), ambient: 0.4 };
     }
@@ -402,38 +426,42 @@ function DynamicLighting({ targetWeather }) {
   );
 }
 
-// Плавное переключение погодных эффектов (дождь, туман)
 function WeatherSystem({ targetWeather }) {
   const rainRef = useRef();
   const cloudsRef = useRef([]);
-  const { scene } = useThree();
+  const windRef = useRef({ speed: 0, direction: 0 });
+  const lightningRef = useRef({ active: false, timer: 0 });
+  const { scene, camera } = useThree();
   const [currentWeather, setCurrentWeather] = useState(targetWeather);
-  const [rainOpacity, setRainOpacity] = useState(targetWeather === 'rain' ? 0.5 : 0);
-  const [fogDensity, setFogDensity] = useState(0.006);
+  const [rainOpacity, setRainOpacity] = useState(targetWeather === 'rain' ? 0.6 : 0);
+  const [fogDensity, setFogDensity] = useState(0.003);
   const [fogColor, setFogColor] = useState(new THREE.Color(0x87CEEB));
+  const [lightningIntensity, setLightningIntensity] = useState(0);
 
-  // Создание дождя и облаков (один раз)
   useEffect(() => {
-    const particleCount = 1200;
+    const particleCount = 2000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
+    const velocities = new Array(particleCount);
     for (let i = 0; i < particleCount; i++) {
-      positions[i*3] = (Math.random() - 0.5) * 200;
-      positions[i*3+1] = Math.random() * 40;
-      positions[i*3+2] = (Math.random() - 0.5) * 150;
+      positions[i*3] = (Math.random() - 0.5) * 180;
+      positions[i*3+1] = Math.random() * 30;
+      positions[i*3+2] = (Math.random() - 0.5) * 140 - 20;
+      velocities[i] = 0.08 + Math.random() * 0.12;
     }
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.12, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
+    const material = new THREE.PointsMaterial({ color: 0xaaddff, size: 0.1, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
     const rain = new THREE.Points(geometry, material);
-    rain.userData = { velocities: new Array(particleCount).fill().map(() => 0.06 + Math.random() * 0.1) };
+    rain.userData = { velocities };
     scene.add(rain);
     rainRef.current = rain;
 
-    for (let i = 0; i < 3; i++) {
-      const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
-      const cloud = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), cloudMat);
-      cloud.position.set((i - 1) * 15, 14 + i * 2, -35);
-      cloud.userData = { speed: 0.4 + i * 0.2 };
+    for (let i = 0; i < 4; i++) {
+      const cloudMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+      const cloud = new THREE.Mesh(new THREE.SphereGeometry(2.5, 5, 5), cloudMat);
+      cloud.position.set((i - 1.5) * 12, 12 + i * 1.5, -25);
+      cloud.scale.set(3, 1.5, 2);
+      cloud.userData = { speed: 0.15 + i * 0.1, range: 30 };
       scene.add(cloud);
       cloudsRef.current.push(cloud);
     }
@@ -444,15 +472,14 @@ function WeatherSystem({ targetWeather }) {
     };
   }, []);
 
-  // Плавный переход тумана и видимости дождя
   useEffect(() => {
     if (targetWeather !== currentWeather) {
       let startTime = 0;
-      const duration = 3000;
+      const duration = 2500;
       const startWeather = currentWeather;
       const endWeather = targetWeather;
-      const startRainOpacity = (startWeather === 'rain') ? 0.5 : 0;
-      const endRainOpacity = (endWeather === 'rain') ? 0.5 : 0;
+      const startRainOpacity = (startWeather === 'rain') ? 0.6 : 0;
+      const endRainOpacity = (endWeather === 'rain') ? 0.6 : 0;
       const startFog = getFogParams(startWeather);
       const endFog = getFogParams(endWeather);
       
@@ -477,16 +504,16 @@ function WeatherSystem({ targetWeather }) {
       const params = getFogParams(targetWeather);
       setFogDensity(params.density);
       setFogColor(params.color);
-      setRainOpacity(targetWeather === 'rain' ? 0.5 : 0);
+      setRainOpacity(targetWeather === 'rain' ? 0.6 : 0);
     }
   }, [targetWeather]);
 
   const getFogParams = (weather) => {
     switch (weather) {
-      case 'sun': return { density: 0.006, color: new THREE.Color(0x87CEEB) };
-      case 'rain': return { density: 0.02, color: new THREE.Color(0x5a6e7a) };
-      case 'wind': return { density: 0.01, color: new THREE.Color(0xaabbcc) };
-      default: return { density: 0.006, color: new THREE.Color(0x87CEEB) };
+      case 'sun': return { density: 0.002, color: new THREE.Color(0x87CEEB) };
+      case 'rain': return { density: 0.008, color: new THREE.Color(0x4a5a6a) };
+      case 'wind': return { density: 0.004, color: new THREE.Color(0xaabbcc) };
+      default: return { density: 0.002, color: new THREE.Color(0x87CEEB) };
     }
   };
 
@@ -494,7 +521,31 @@ function WeatherSystem({ targetWeather }) {
     scene.fog = new THREE.FogExp2(fogColor, fogDensity);
   }, [fogDensity, fogColor]);
 
-  // Анимация движения облаков и дождя
+  useEffect(() => {
+    if (targetWeather === 'rain' && lightningRef.current.timer === 0) {
+      const scheduleLightning = () => {
+        const delay = 8000 + Math.random() * 12000;
+        lightningRef.current.timer = setTimeout(() => {
+          setLightningIntensity(1);
+          lightningRef.current.active = true;
+          setTimeout(() => setLightningIntensity(0), 150);
+          setTimeout(() => {
+            if (Math.random() > 0.6) {
+              setLightningIntensity(0.7);
+              setTimeout(() => setLightningIntensity(0), 100);
+            }
+            lightningRef.current.active = false;
+            scheduleLightning();
+          }, 200);
+        }, delay);
+      };
+      scheduleLightning();
+      return () => {
+        if (lightningRef.current.timer) clearTimeout(lightningRef.current.timer);
+      };
+    }
+  }, [targetWeather]);
+
   useFrame((_, delta) => {
     if (rainRef.current) {
       rainRef.current.material.opacity = rainOpacity;
@@ -502,44 +553,205 @@ function WeatherSystem({ targetWeather }) {
       if (rainOpacity > 0) {
         const positions = rainRef.current.geometry.attributes.position.array;
         const velocities = rainRef.current.userData.velocities;
+        let windOffset = 0;
+        if (targetWeather === 'rain') windOffset = delta * 1.5;
+        if (targetWeather === 'wind') windOffset = delta * 2.5;
+        
         for (let i = 0; i < positions.length / 3; i++) {
-          positions[i*3+1] -= velocities[i] * delta * 2;
-          if (positions[i*3+1] < 0) {
-            positions[i*3+1] = 40;
-            positions[i*3] = (Math.random() - 0.5) * 200;
-            positions[i*3+2] = (Math.random() - 0.5) * 150;
+          positions[i*3+1] -= velocities[i] * delta * 1.5;
+          positions[i*3] += windOffset * (Math.random() - 0.5) * 0.5;
+          if (positions[i*3+1] < -2) {
+            positions[i*3+1] = 25;
+            positions[i*3] = (Math.random() - 0.5) * 180;
+            positions[i*3+2] = (Math.random() - 0.5) * 140 - 20;
           }
         }
         rainRef.current.geometry.attributes.position.needsUpdate = true;
       }
     }
+    
     cloudsRef.current.forEach(cloud => {
-      const speed = (targetWeather === 'wind') ? 0.3 : 0.05;
+      let speed = 0.03;
+      if (targetWeather === 'wind') speed = 0.12;
+      if (targetWeather === 'rain') speed = 0.07;
       cloud.position.x += speed * delta;
-      if (cloud.position.x > 35) cloud.position.x = -35;
+      if (cloud.position.x > 25) cloud.position.x = -25;
     });
+
+    if (lightningIntensity > 0 && targetWeather === 'rain') {
+      const intensity = 1 + lightningIntensity * 3;
+      scene.backgroundIntensity = intensity;
+      setTimeout(() => { scene.backgroundIntensity = 1; }, 100);
+    }
   });
+
+  return lightningIntensity > 0 && targetWeather === 'rain' ? (
+    <ambientLight intensity={2 + lightningIntensity * 2} color="#ffffff" />
+  ) : null;
+}
+
+function AudioManager({ weather }) {
+  const audioContextRef = useRef(null);
+  const soundsRef = useRef({ rain: null, thunder: null, music: null });
+  const currentWeatherRef = useRef(weather);
+
+  useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+
+    const createRainSound = () => {
+      const bufferSize = 4096;
+      const noiseNode = ctx.createScriptProcessor(bufferSize, 1, 1);
+      noiseNode.onaudioprocess = (e) => {
+        const output = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = (Math.random() * 2 - 1) * 0.15;
+        }
+      };
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0;
+      noiseNode.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      return { node: noiseNode, gain: gainNode };
+    };
+
+    const createThunderSound = () => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 80;
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      return { osc, gain };
+    };
+
+    const createMusic = (type) => {
+      const now = ctx.currentTime;
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = 0;
+      masterGain.connect(ctx.destination);
+      
+      const notes = type === 'sun' ? [523.25, 587.33, 659.25, 523.25] :
+                    type === 'wind' ? [261.63, 293.66, 329.63, 261.63] :
+                    [196.00, 174.61, 155.56, 130.81];
+      
+      const scheduleNote = (time, pitch, duration, volume) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = pitch;
+        gain.gain.value = volume;
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        osc.stop(time + duration);
+      };
+      
+      let interval;
+      if (type === 'sun') {
+        interval = setInterval(() => {
+          const time = ctx.currentTime;
+          notes.forEach((note, i) => {
+            scheduleNote(time + i * 0.4, note, 0.8, 0.08);
+          });
+        }, 3200);
+      } else if (type === 'wind') {
+        interval = setInterval(() => {
+          const time = ctx.currentTime;
+          scheduleNote(time, notes[0] * 0.5, 2.5, 0.06);
+          scheduleNote(time + 1.3, notes[2] * 0.5, 2.0, 0.05);
+        }, 4000);
+      } else {
+        interval = setInterval(() => {
+          const time = ctx.currentTime;
+          scheduleNote(time, notes[0] * 0.3, 3.0, 0.1);
+          scheduleNote(time + 1.5, notes[1] * 0.3, 2.5, 0.08);
+          scheduleNote(time + 3.0, notes[2] * 0.3, 2.0, 0.06);
+        }, 6000);
+      }
+      
+      return { gain: masterGain, interval };
+    };
+
+    if (!soundsRef.current.rain) soundsRef.current.rain = createRainSound();
+    if (!soundsRef.current.thunder) soundsRef.current.thunder = createThunderSound();
+
+    const updateSounds = () => {
+      const targetVolumes = {
+        sun: { rain: 0, thunder: 0, music: 0.12 },
+        wind: { rain: 0, thunder: 0, music: 0.1 },
+        rain: { rain: 0.25, thunder: 0.08, music: 0.09 }
+      };
+      
+      if (soundsRef.current.rain) {
+        soundsRef.current.rain.gain.gain.linearRampToValueAtTime(targetVolumes[weather].rain, ctx.currentTime + 1);
+      }
+      if (soundsRef.current.thunder && weather === 'rain' && Math.random() > 0.97) {
+        const thunder = soundsRef.current.thunder;
+        thunder.gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+        setTimeout(() => {
+          thunder.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+        }, 300);
+      }
+      
+      if (soundsRef.current.music) {
+        clearInterval(soundsRef.current.music.interval);
+        soundsRef.current.music.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+        setTimeout(() => {
+          if (soundsRef.current.music) {
+            soundsRef.current.music.gain.disconnect();
+          }
+          soundsRef.current.music = createMusic(weather);
+          soundsRef.current.music.gain.gain.value = targetVolumes[weather].music;
+        }, 1000);
+      } else {
+        soundsRef.current.music = createMusic(weather);
+        soundsRef.current.music.gain.gain.value = targetVolumes[weather].music;
+      }
+    };
+
+    if (currentWeatherRef.current !== weather) {
+      updateSounds();
+      currentWeatherRef.current = weather;
+    } else if (!soundsRef.current.music) {
+      updateSounds();
+    }
+
+    return () => {
+      if (soundsRef.current.rain) {
+        soundsRef.current.rain.node.disconnect();
+      }
+      if (soundsRef.current.thunder) {
+        soundsRef.current.thunder.osc.stop();
+        soundsRef.current.thunder.gain.disconnect();
+      }
+      if (soundsRef.current.music) {
+        clearInterval(soundsRef.current.music.interval);
+        soundsRef.current.music.gain.disconnect();
+      }
+    };
+  }, [weather]);
 
   return null;
 }
 
-// --------------------------------------------------------------
-// ОСНОВНОЙ КОМПОНЕНТ APP
-// --------------------------------------------------------------
 function App() {
   const [hunger, setHunger] = useState(0.3);
   const [energy, setEnergy] = useState(0.8);
   const [fatigue, setFatigue] = useState(0.2);
   const [showThought, setShowThought] = useState(false);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
-  const [weather, setWeather] = useState('sun'); // целевая погода
+  const [weather, setWeather] = useState('sun');
 
-  // Функции смены погоды, вызываемые из кнопок
   const setWeatherSun = useCallback(() => setWeather('sun'), []);
   const setWeatherWind = useCallback(() => setWeather('wind'), []);
   const setWeatherRain = useCallback(() => setWeather('rain'), []);
 
-  // Медленные изменения параметров (учитывают погоду)
   useEffect(() => {
     const interval = setInterval(() => {
       setHunger(prev => Math.min(1, prev + 0.003));
@@ -557,17 +769,6 @@ function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, [energy, weather, showThought, buttonsDisabled]);
-
-  // Автоматическая смена погоды (теперь не мешает ручному управлению)
-  // Можно оставить или убрать – оставим как фон, но кнопки переопределяют
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const types = ['sun', 'rain', 'wind'];
-      const newWeather = types[Math.floor(Math.random() * 3)];
-      setWeather(newWeather);
-    }, 45000); // реже, чтобы не мешать
-    return () => clearInterval(interval);
-  }, []);
 
   const handleFeed = () => {
     setHunger(prev => Math.max(0, prev - 0.15));
@@ -601,14 +802,14 @@ function App() {
         shadows
         gl={{ toneMapping: THREE.ReinhardToneMapping, toneMappingExposure: 1.2 }}
       >
-        <Sky distance={450} sunPosition={weather === 'sun' ? [5, 20, 3] : [2, 5, 0]} inclination={0.5} azimuth={0.2} />
+        <Sky distance={450} sunPosition={weather === 'sun' ? [5, 20, 3] : [1, 3, 1]} inclination={0.4} azimuth={0.2} turbidity={weather === 'rain' ? 10 : 2} />
         <Main />
         <ambientLight intensity={0.5} />
         <Ground />
         <DynamicLighting targetWeather={weather} />
         <WeatherSystem targetWeather={weather} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+        <directionalLight position={[5, 5, 5]} intensity={0.5} />
+        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={0.5} />
         
         <Suspense fallback={
           <mesh position={[0, 0.5, 0]}>
@@ -619,7 +820,8 @@ function App() {
           <Scene fatigue={fatigue} onInteract={handleModelInteract} />
         </Suspense>
         
-        <OrbitControls />
+        <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
+        <AudioManager weather={weather} />
       </Canvas>
 
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: 'none' }}>

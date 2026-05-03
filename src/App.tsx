@@ -20,7 +20,7 @@ function Scene({ fatigue, onInteract }) {
 
   useEffect(() => {
     if (scene) {
-      console.log('Модель загружена');
+      console.log('модель загружена');
       scene.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -28,7 +28,7 @@ function Scene({ fatigue, onInteract }) {
         }
       });
     } else if (loadError) {
-      console.error('Ошибка загрузки модели:', loadError);
+      console.error('ошибка загрузки модели:', loadError);
       setError(loadError);
     }
   }, [scene, loadError]);
@@ -88,7 +88,7 @@ function Ground() {
     normalMap: '/assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_normal-ogl.png',
     aoMap: '/assets/sloppy-mortar-stone-wall-unity/sloppy-mortar-stone-wall_ao.png',
   }, undefined, (err) => {
-    console.error('Ошибка загрузки текстур:', err);
+    console.error('ошибка загрузки текстур:', err);
     setTextureError(true);
   });
   
@@ -238,15 +238,15 @@ const PostEffects = ({ fatigue }) => {
 
 const ThoughtText = ({ show, onComplete }) => {
   const messages = [
-    "Мысли текут медленно...",
-    "Состояние покоя",
-    "Желание тепла",
-    "Где-то далеко шум...",
-    "Сон на грани",
-    "Присутствие ощущается",
-    "Мысли спутаны",
-    "Состояние без имени",
-    "Желание без формы"
+    "мысли текут медленно...",
+    "состояние покоя",
+    "желание тепла",
+    "где-то далеко шум...",
+    "сон на грани",
+    "присутствие ощущается",
+    "мысли спутаны",
+    "состояние без имени",
+    "желание без формы"
   ];
 
   const [currentMsg, setCurrentMsg] = useState("");
@@ -429,41 +429,52 @@ function DynamicLighting({ targetWeather }) {
 function WeatherSystem({ targetWeather }) {
   const rainRef = useRef();
   const cloudsRef = useRef([]);
-  const windRef = useRef({ speed: 0, direction: 0 });
   const lightningRef = useRef({ active: false, timer: 0 });
-  const { scene, camera } = useThree();
+  const { scene } = useThree();
   const [currentWeather, setCurrentWeather] = useState(targetWeather);
-  const [rainOpacity, setRainOpacity] = useState(targetWeather === 'rain' ? 0.6 : 0);
+  const [rainOpacity, setRainOpacity] = useState(targetWeather === 'rain' ? 0.8 : 0);
   const [fogDensity, setFogDensity] = useState(0.003);
   const [fogColor, setFogColor] = useState(new THREE.Color(0x87CEEB));
   const [lightningIntensity, setLightningIntensity] = useState(0);
 
   useEffect(() => {
-    const particleCount = 2000;
+    const particleCount = 4000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const velocities = new Array(particleCount);
     for (let i = 0; i < particleCount; i++) {
-      positions[i*3] = (Math.random() - 0.5) * 180;
-      positions[i*3+1] = Math.random() * 30;
-      positions[i*3+2] = (Math.random() - 0.5) * 140 - 20;
-      velocities[i] = 0.08 + Math.random() * 0.12;
+      positions[i*3] = (Math.random() - 0.5) * 250;
+      positions[i*3+1] = Math.random() * 60;
+      positions[i*3+2] = (Math.random() - 0.5) * 200 - 30;
+      velocities[i] = 0.15 + Math.random() * 0.2;
     }
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({ color: 0xaaddff, size: 0.1, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+    const material = new THREE.PointsMaterial({ 
+      color: 0xcceeff, 
+      size: 0.25, 
+      transparent: true, 
+      opacity: 0.7, 
+      blending: THREE.AdditiveBlending 
+    });
     const rain = new THREE.Points(geometry, material);
     rain.userData = { velocities };
     scene.add(rain);
     rainRef.current = rain;
 
-    for (let i = 0; i < 4; i++) {
-      const cloudMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
-      const cloud = new THREE.Mesh(new THREE.SphereGeometry(2.5, 5, 5), cloudMat);
-      cloud.position.set((i - 1.5) * 12, 12 + i * 1.5, -25);
-      cloud.scale.set(3, 1.5, 2);
-      cloud.userData = { speed: 0.15 + i * 0.1, range: 30 };
-      scene.add(cloud);
-      cloudsRef.current.push(cloud);
+    for (let i = 0; i < 6; i++) {
+      const cloudMat = new THREE.MeshStandardMaterial({ color: 0x888899, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+      const cloudGroup = new THREE.Group();
+      const parts = 3 + Math.floor(Math.random() * 3);
+      for (let p = 0; p < parts; p++) {
+        const part = new THREE.Mesh(new THREE.SphereGeometry(1.2 + Math.random() * 0.8, 5, 5), cloudMat);
+        part.position.set((p - parts/2) * 1.5, Math.random() * 1, Math.random() * 1);
+        part.scale.set(1.5, 0.8, 1);
+        cloudGroup.add(part);
+      }
+      cloudGroup.position.set((i - 2.5) * 18, 18 + Math.random() * 8, -50 + Math.random() * 20);
+      cloudGroup.userData = { speed: 0.08 + Math.random() * 0.1, rangeX: 40, rangeZ: 30 };
+      scene.add(cloudGroup);
+      cloudsRef.current.push(cloudGroup);
     }
 
     return () => {
@@ -472,14 +483,92 @@ function WeatherSystem({ targetWeather }) {
     };
   }, []);
 
+  useFrame((_, delta) => {
+    if (rainRef.current) {
+      rainRef.current.material.opacity = rainOpacity;
+      rainRef.current.visible = rainOpacity > 0.05;
+      if (rainOpacity > 0.05) {
+        const positions = rainRef.current.geometry.attributes.position.array;
+        const velocities = rainRef.current.userData.velocities;
+        let windX = 0;
+        let windZ = 0;
+        if (targetWeather === 'rain') {
+          windX = delta * 2.5;
+          windZ = delta * 1.2;
+        } else if (targetWeather === 'wind') {
+          windX = delta * 4;
+        }
+        
+        for (let i = 0; i < positions.length / 3; i++) {
+          positions[i*3+1] -= velocities[i] * delta * 1.8;
+          positions[i*3] += windX * (0.8 + Math.random() * 0.7);
+          positions[i*3+2] += windZ * (Math.random() - 0.5);
+          
+          if (positions[i*3+1] < -5) {
+            positions[i*3+1] = 55;
+            positions[i*3] = (Math.random() - 0.5) * 250;
+            positions[i*3+2] = (Math.random() - 0.5) * 200 - 30;
+          }
+        }
+        rainRef.current.geometry.attributes.position.needsUpdate = true;
+      }
+    }
+    
+    cloudsRef.current.forEach(cloud => {
+      let speed = 0.04;
+      if (targetWeather === 'wind') speed = 0.15;
+      if (targetWeather === 'rain') speed = 0.1;
+      cloud.position.x += speed * delta;
+      cloud.position.z += (targetWeather === 'rain' ? 0.02 : 0) * delta;
+      if (cloud.position.x > 60) cloud.position.x = -60;
+      if (cloud.position.z > 20) cloud.position.z = -70;
+    });
+  });
+
+  useEffect(() => {
+    if (targetWeather === 'rain') {
+      const scheduleLightning = () => {
+        const delay = 6000 + Math.random() * 10000;
+        lightningRef.current.timer = setTimeout(() => {
+          setLightningIntensity(1.2);
+          
+          const lightningLight = new THREE.AmbientLight(0xffffff, 1.5);
+          scene.add(lightningLight);
+          
+          setTimeout(() => {
+            setLightningIntensity(0);
+            scene.remove(lightningLight);
+          }, 120);
+          
+          if (Math.random() > 0.6) {
+            setTimeout(() => {
+              setLightningIntensity(0.8);
+              const secondLight = new THREE.AmbientLight(0xffffff, 1);
+              scene.add(secondLight);
+              setTimeout(() => {
+                setLightningIntensity(0);
+                scene.remove(secondLight);
+              }, 80);
+            }, 200);
+          }
+          scheduleLightning();
+        }, delay);
+      };
+      scheduleLightning();
+      return () => {
+        if (lightningRef.current.timer) clearTimeout(lightningRef.current.timer);
+      };
+    }
+  }, [targetWeather]);
+
   useEffect(() => {
     if (targetWeather !== currentWeather) {
       let startTime = 0;
-      const duration = 2500;
+      const duration = 2000;
       const startWeather = currentWeather;
       const endWeather = targetWeather;
-      const startRainOpacity = (startWeather === 'rain') ? 0.6 : 0;
-      const endRainOpacity = (endWeather === 'rain') ? 0.6 : 0;
+      const startRainOpacity = (startWeather === 'rain') ? 0.8 : 0;
+      const endRainOpacity = (endWeather === 'rain') ? 0.8 : 0;
       const startFog = getFogParams(startWeather);
       const endFog = getFogParams(endWeather);
       
@@ -504,15 +593,15 @@ function WeatherSystem({ targetWeather }) {
       const params = getFogParams(targetWeather);
       setFogDensity(params.density);
       setFogColor(params.color);
-      setRainOpacity(targetWeather === 'rain' ? 0.6 : 0);
+      setRainOpacity(targetWeather === 'rain' ? 0.8 : 0);
     }
   }, [targetWeather]);
 
   const getFogParams = (weather) => {
     switch (weather) {
       case 'sun': return { density: 0.002, color: new THREE.Color(0x87CEEB) };
-      case 'rain': return { density: 0.008, color: new THREE.Color(0x4a5a6a) };
-      case 'wind': return { density: 0.004, color: new THREE.Color(0xaabbcc) };
+      case 'rain': return { density: 0.006, color: new THREE.Color(0x4a5a6a) };
+      case 'wind': return { density: 0.0035, color: new THREE.Color(0xaabbcc) };
       default: return { density: 0.002, color: new THREE.Color(0x87CEEB) };
     }
   };
@@ -521,222 +610,14 @@ function WeatherSystem({ targetWeather }) {
     scene.fog = new THREE.FogExp2(fogColor, fogDensity);
   }, [fogDensity, fogColor]);
 
-  useEffect(() => {
-    if (targetWeather === 'rain' && lightningRef.current.timer === 0) {
-      const scheduleLightning = () => {
-        const delay = 8000 + Math.random() * 12000;
-        lightningRef.current.timer = setTimeout(() => {
-          setLightningIntensity(1);
-          lightningRef.current.active = true;
-          setTimeout(() => setLightningIntensity(0), 150);
-          setTimeout(() => {
-            if (Math.random() > 0.6) {
-              setLightningIntensity(0.7);
-              setTimeout(() => setLightningIntensity(0), 100);
-            }
-            lightningRef.current.active = false;
-            scheduleLightning();
-          }, 200);
-        }, delay);
-      };
-      scheduleLightning();
-      return () => {
-        if (lightningRef.current.timer) clearTimeout(lightningRef.current.timer);
-      };
-    }
-  }, [targetWeather]);
-
-  useFrame((_, delta) => {
-    if (rainRef.current) {
-      rainRef.current.material.opacity = rainOpacity;
-      rainRef.current.visible = rainOpacity > 0;
-      if (rainOpacity > 0) {
-        const positions = rainRef.current.geometry.attributes.position.array;
-        const velocities = rainRef.current.userData.velocities;
-        let windOffset = 0;
-        if (targetWeather === 'rain') windOffset = delta * 1.5;
-        if (targetWeather === 'wind') windOffset = delta * 2.5;
-        
-        for (let i = 0; i < positions.length / 3; i++) {
-          positions[i*3+1] -= velocities[i] * delta * 1.5;
-          positions[i*3] += windOffset * (Math.random() - 0.5) * 0.5;
-          if (positions[i*3+1] < -2) {
-            positions[i*3+1] = 25;
-            positions[i*3] = (Math.random() - 0.5) * 180;
-            positions[i*3+2] = (Math.random() - 0.5) * 140 - 20;
-          }
-        }
-        rainRef.current.geometry.attributes.position.needsUpdate = true;
-      }
-    }
-    
-    cloudsRef.current.forEach(cloud => {
-      let speed = 0.03;
-      if (targetWeather === 'wind') speed = 0.12;
-      if (targetWeather === 'rain') speed = 0.07;
-      cloud.position.x += speed * delta;
-      if (cloud.position.x > 25) cloud.position.x = -25;
-    });
-
-    if (lightningIntensity > 0 && targetWeather === 'rain') {
-      const intensity = 1 + lightningIntensity * 3;
-      scene.backgroundIntensity = intensity;
-      setTimeout(() => { scene.backgroundIntensity = 1; }, 100);
-    }
-  });
-
-  return lightningIntensity > 0 && targetWeather === 'rain' ? (
-    <ambientLight intensity={2 + lightningIntensity * 2} color="#ffffff" />
-  ) : null;
-}
-
-function AudioManager({ weather }) {
-  const audioContextRef = useRef(null);
-  const soundsRef = useRef({ rain: null, thunder: null, music: null });
-  const currentWeatherRef = useRef(weather);
-
-  useEffect(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    const ctx = audioContextRef.current;
-
-    const createRainSound = () => {
-      const bufferSize = 4096;
-      const noiseNode = ctx.createScriptProcessor(bufferSize, 1, 1);
-      noiseNode.onaudioprocess = (e) => {
-        const output = e.outputBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = (Math.random() * 2 - 1) * 0.15;
-        }
-      };
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 0;
-      noiseNode.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      return { node: noiseNode, gain: gainNode };
-    };
-
-    const createThunderSound = () => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 80;
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      return { osc, gain };
-    };
-
-    const createMusic = (type) => {
-      const now = ctx.currentTime;
-      const masterGain = ctx.createGain();
-      masterGain.gain.value = 0;
-      masterGain.connect(ctx.destination);
-      
-      const notes = type === 'sun' ? [523.25, 587.33, 659.25, 523.25] :
-                    type === 'wind' ? [261.63, 293.66, 329.63, 261.63] :
-                    [196.00, 174.61, 155.56, 130.81];
-      
-      const scheduleNote = (time, pitch, duration, volume) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = pitch;
-        gain.gain.value = volume;
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(time);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-        osc.stop(time + duration);
-      };
-      
-      let interval;
-      if (type === 'sun') {
-        interval = setInterval(() => {
-          const time = ctx.currentTime;
-          notes.forEach((note, i) => {
-            scheduleNote(time + i * 0.4, note, 0.8, 0.08);
-          });
-        }, 3200);
-      } else if (type === 'wind') {
-        interval = setInterval(() => {
-          const time = ctx.currentTime;
-          scheduleNote(time, notes[0] * 0.5, 2.5, 0.06);
-          scheduleNote(time + 1.3, notes[2] * 0.5, 2.0, 0.05);
-        }, 4000);
-      } else {
-        interval = setInterval(() => {
-          const time = ctx.currentTime;
-          scheduleNote(time, notes[0] * 0.3, 3.0, 0.1);
-          scheduleNote(time + 1.5, notes[1] * 0.3, 2.5, 0.08);
-          scheduleNote(time + 3.0, notes[2] * 0.3, 2.0, 0.06);
-        }, 6000);
-      }
-      
-      return { gain: masterGain, interval };
-    };
-
-    if (!soundsRef.current.rain) soundsRef.current.rain = createRainSound();
-    if (!soundsRef.current.thunder) soundsRef.current.thunder = createThunderSound();
-
-    const updateSounds = () => {
-      const targetVolumes = {
-        sun: { rain: 0, thunder: 0, music: 0.12 },
-        wind: { rain: 0, thunder: 0, music: 0.1 },
-        rain: { rain: 0.25, thunder: 0.08, music: 0.09 }
-      };
-      
-      if (soundsRef.current.rain) {
-        soundsRef.current.rain.gain.gain.linearRampToValueAtTime(targetVolumes[weather].rain, ctx.currentTime + 1);
-      }
-      if (soundsRef.current.thunder && weather === 'rain' && Math.random() > 0.97) {
-        const thunder = soundsRef.current.thunder;
-        thunder.gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
-        setTimeout(() => {
-          thunder.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
-        }, 300);
-      }
-      
-      if (soundsRef.current.music) {
-        clearInterval(soundsRef.current.music.interval);
-        soundsRef.current.music.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
-        setTimeout(() => {
-          if (soundsRef.current.music) {
-            soundsRef.current.music.gain.disconnect();
-          }
-          soundsRef.current.music = createMusic(weather);
-          soundsRef.current.music.gain.gain.value = targetVolumes[weather].music;
-        }, 1000);
-      } else {
-        soundsRef.current.music = createMusic(weather);
-        soundsRef.current.music.gain.gain.value = targetVolumes[weather].music;
-      }
-    };
-
-    if (currentWeatherRef.current !== weather) {
-      updateSounds();
-      currentWeatherRef.current = weather;
-    } else if (!soundsRef.current.music) {
-      updateSounds();
-    }
-
-    return () => {
-      if (soundsRef.current.rain) {
-        soundsRef.current.rain.node.disconnect();
-      }
-      if (soundsRef.current.thunder) {
-        soundsRef.current.thunder.osc.stop();
-        soundsRef.current.thunder.gain.disconnect();
-      }
-      if (soundsRef.current.music) {
-        clearInterval(soundsRef.current.music.interval);
-        soundsRef.current.music.gain.disconnect();
-      }
-    };
-  }, [weather]);
-
+  if (lightningIntensity > 0 && targetWeather === 'rain') {
+    return (
+      <>
+        <ambientLight intensity={0.8 + lightningIntensity * 2} color="#ffffff" />
+        <directionalLight position={[0, 10, 0]} intensity={0.5 + lightningIntensity} color="#ffffff" />
+      </>
+    );
+  }
   return null;
 }
 
@@ -747,10 +628,64 @@ function App() {
   const [showThought, setShowThought] = useState(false);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
   const [weather, setWeather] = useState('sun');
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [saveTimeout, setSaveTimeout] = useState(null);
+
+  const loadStateFromServer = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/state');
+      const data = await res.json();
+      if (data) {
+        setHunger(data.hunger);
+        setEnergy(data.energy);
+        setFatigue(data.fatigue);
+        console.log('состояние загружено с сервера');
+      }
+    } catch (err) {
+      console.error('ошибка загрузки:', err);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, []);
+
+  const saveToServer = useCallback(async (h, e, f) => {
+    try {
+      await fetch('http://localhost:3001/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hunger: h, energy: e, fatigue: f })
+      });
+      console.log('состояние сохранено');
+    } catch (err) {
+      console.error('ошибка сохранения:', err);
+    }
+  }, []);
 
   const setWeatherSun = useCallback(() => setWeather('sun'), []);
   const setWeatherWind = useCallback(() => setWeather('wind'), []);
   const setWeatherRain = useCallback(() => setWeather('rain'), []);
+
+  useEffect(() => {
+    loadStateFromServer();
+  }, [loadStateFromServer]);
+
+  useEffect(() => {
+    if (initialLoading) return;
+    if (saveTimeout) clearTimeout(saveTimeout);
+    const timeout = setTimeout(() => {
+      saveToServer(hunger, energy, fatigue);
+    }, 3000);
+    setSaveTimeout(timeout);
+    return () => clearTimeout(timeout);
+  }, [hunger, energy, fatigue, initialLoading, saveToServer]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveToServer(hunger, energy, fatigue);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hunger, energy, fatigue, saveToServer]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -794,6 +729,14 @@ function App() {
     setTimeout(() => setShowThought(false), 3000);
   }, [handleFeed, handleRest, handlePlay]);
 
+  if (initialLoading) {
+    return (
+      <div style={{ width: '100vw', height: '100vh', background: '#202050', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>
+        загрузка состояния питомца...
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#202050', position: 'relative', overflow: 'hidden' }}>
       <Canvas
@@ -820,8 +763,7 @@ function App() {
           <Scene fatigue={fatigue} onInteract={handleModelInteract} />
         </Suspense>
         
-        <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
-        <AudioManager weather={weather} />
+        <OrbitControls />
       </Canvas>
 
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: 'none' }}>

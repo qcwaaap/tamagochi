@@ -1,73 +1,170 @@
-# React + TypeScript + Vite
+# Виртуальный питомец (Tamagochi) с 3D-графикой и динамической погодой
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Описание проекта
 
-Currently, two official plugins are available:
+Это веб-приложение, в котором пользователь заботится о 3D-питомце. Состояние питомца (голод, энергия, усталость) меняется в реальном времени и сохраняется на сервере. Интерфейс минималистичен: нет чисел и шкал, только цветные полупрозрачные полосы и атмосферные эффекты. Погода (солнце, дождь, ветер) влияет на параметры и визуальное окружение: идёт дождь с частицами, молниями, туманом; ветер сдвигает облака; солнце даёт тёплый свет.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Стек технологий:
 
-## React Compiler
+- Frontend: React, TypeScript, Vite, Three.js (через @react-three/fiber, @react-three/drei)
+- Backend: Node.js, Express, SQLite
+- Сборка: Vite
+- Язык: TypeScript
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ER-диаграмма
 
-## Expanding the ESLint configuration
+В проекте используется одна таблица в базе данных SQLite:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Таблица `pet_state`**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
+| Колонка     | Тип      | Ограничения                                   |
+| ----------- | -------- | --------------------------------------------- |
+| id          | INTEGER  | PRIMARY KEY CHECK (id = 1)                    |
+| hunger      | REAL     | NOT NULL, диапазон 0..1                       |
+| energy      | REAL     | NOT NULL, диапазон 0..1                       |
+| fatigue     | REAL     | NOT NULL, диапазон 0..1                       |
+| updated_at  | INTEGER  | NOT NULL (Unix timestamp в миллисекундах)     |
+
+Таблица хранит единственную запись (id = 1) – текущее состояние питомца. При первом запуске сервера автоматически вставляются значения по умолчанию: голод 0.3, энергия 0.8, усталость 0.2.
+
+**Диаграмма (текстовое представление):**
++-------------------+
+| pet_state |
++-------------------+
+| id (PK) |
+| hunger (REAL) |
+| energy (REAL) |
+| fatigue (REAL) |
+| updated_at (INT) |
++-------------------+
+
+## Макеты интерфейса
+
+Интерфейс не содержит числовых индикаторов и текстовых подписей к шкалам. Основные элементы:
+
+- **Три цветные полосы** в правом верхнем углу: коричневая – голод, зелёная – энергия, сиреневая – усталость. При критических значениях полосы слегка светятся.
+- **Три кнопки** внизу экрана: «накормить», «успокоить», «погладить». При нажатии меняется состояние питомца и погода (кормление → солнце, успокоение → ветер, поглаживание → дождь). Кнопки иногда становятся недоступными без объяснения, нажатие не всегда даёт результат (элемент спонтанности).
+- **Текст мыслей** – случайные фразы, медленно всплывающие и исчезающие.
+- **Визуальные эффекты**: затемнение и зернистость при усталости, пульсирующие пятна света, туман, частицы дождя, молнии, движущиеся облака.
+
+Макеты не отрисовывались отдельно, но скриншоты готового интерфейса можно посмотреть в папке `screenshots/` (если она есть) или по ссылке на видео-демонстрацию.
+
+## Архитектура системы
+
+Система состоит из двух независимых частей: frontend и backend.
+
+**Frontend (React + Three.js)**  
+- Отвечает за 3D-сцену, модель питомца, погодные эффекты и пользовательский интерфейс.  
+- Взаимодействует с сервером через HTTP-запросы (fetch).  
+- Использует Vite как сборщик и дев-сервер.  
+- Хранит состояние питомца в локальных хуках React и периодически синхронизирует его с сервером.
+
+**Backend (Express + SQLite)**  
+- Предоставляет REST API для чтения и записи состояния питомца.  
+- Хранит данные в локальной SQLite-базе данных (файл `pet_state.db`).  
+- Запускается на порту 3001 (можно изменить в настройках).  
+- Не требует установки отдельной СУБД.
+
+**Взаимодействие:**  
+1. При загрузке страницы фронтенд отправляет GET-запрос на `/api/state` и отображает полученное состояние.  
+2. При изменении параметров (таймер, нажатие кнопки) фронтенд отправляет POST-запрос на `/api/state` с задержкой 3 секунды (debounce).  
+3. Перед закрытием вкладки данные сохраняются принудительно через `beforeunload`.
+
+## Описание API
+
+**Базовый URL:** `http://localhost:3001/api`
+
+### Получить текущее состояние
+
+- **Эндпоинт:** `GET /state`
+- **Ответ (успех):**
+  ```json
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+    "hunger": 0.35,
+    "energy": 0.72,
+    "fatigue": 0.28,
+    "updated_at": 1715123456789
+  }
+  Коды ответов: 200 OK, 500 Internal Server Error.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Обновить состояние питомца
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Эндпоинт: POST /state
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Тело запроса (JSON):
+{
+  "hunger": 0.4,
+  "energy": 0.6,
+  "fatigue": 0.5
+}
+{
+  "success": true,
+  "updated_at": 1715123456789
+}``` 
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Коды ответов: 200 OK, 400 Bad Request (если поля отсутствуют или значения вне диапазона 0..1), 500 Internal Server Error.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Принудительное сохранение (для beforeunload)
+Эндпоинт: POST /state/save
+
+Тело и ответ аналогичны /state. Используется для синхронного сохранения перед закрытием страницы.
+
+Инструкции по запуску проекта
+Требования
+Node.js (версия 18 или выше)
+
+npm (обычно идёт в комплекте с Node.js)
+
+Браузер с поддержкой WebGL (Chrome, Firefox, Edge)
+
+Установка и запуск
+git clone https://github.com/qcwaaap/tamagochi.git
+cd tamagochi
+Настройка и запуск backend
+
+bash
+cd server
+npm install
+node index.js
+Сервер начнёт работу на порту 3001. В терминале появится сообщение:
+Сервер запущен на http://localhost:3001
+
+Настройка и запуск frontend
+
+Откройте новый терминал и выполните:
+
+bash
+cd ../  # если вы находитесь в папке server
+npm install
+npm run dev
+Frontend-сервер Vite запустится, обычно на порту 5173. Откройте в браузере адрес http://localhost:5173.
+
+Возможные проблемы и решения
+Порт 3001 уже занят – измените PORT в server/index.js и соответствующий URL в App.tsx (в fetch-запросах).
+
+Ошибка текстур – убедитесь, что папка public/assets/sloppy-mortar-stone-wall-unity/ содержит файлы _albedo.png, _normal-ogl.png, _ao.png. Если нет – замените пути в компоненте Ground или временно используйте сплошной цвет.
+
+Модель не загружается – проверьте, что файл scene.gltf находится в public/.
+
+Блокировка из-за политики CSP (ошибка eval) – в проекте уже добавлен мета-тег в index.html и настроен vite.config.ts с разрешением unsafe-eval. Если проблема сохраняется, запустите браузер с отключённой безопасностью (только для разработки):
+
+bash
+# Windows
+chrome.exe --disable-web-security --user-data-dir="C:\temp\chrome_dev"
+# macOS
+open -na Google\ Chrome --args --disable-web-security --user-data-dir="/tmp/chrome_dev"
+Дополнительная информация
+При первом запуске сервера автоматически создаётся файл pet_state.db в папке server/. Не удаляйте его, иначе состояние сбросится.
+
+Звуковые эффекты отсутствуют в текущей версии из-за ограничений браузера (требуется жест пользователя). Они могут быть добавлены позже.
+
+Все параметры питомца меняются плавно, анимации замедлены – это соответствует концепции «интуитивного взаимодействия» без явных чисел.
+
+Ссылки
+Репозиторий проекта
+
+[Видео-демонстрация (если есть)] – опционально
+
+Лицензия
+MIT
+
